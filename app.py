@@ -57,21 +57,8 @@ def inference_gpu(video_path: str, progress=gr.Progress()):
 
 # ── Pipeline completo ────────────────────────────────────────────────────────
 
-def analyze_video(video_input, progress=gr.Progress()):
+def analyze_video(video_path: str, progress=gr.Progress()):
     """Pipeline completo: upload → inferência → scoring → dashboard."""
-    # Gradio 5.x passes VideoData dict or string depending on version
-    if video_input is None:
-        raise gr.Error("Faça upload de um vídeo primeiro.")
-
-    # Extract the file path from VideoData or use as-is if string
-    if isinstance(video_input, dict):
-        video_path = video_input.get("video", {}).get("path", "") if "video" in video_input else video_input.get("path", "")
-    elif isinstance(video_input, str):
-        video_path = video_input
-    else:
-        # Try to get .video.path for VideoData objects
-        video_path = getattr(getattr(video_input, "video", video_input), "path", str(video_input))
-
     if not video_path:
         raise gr.Error("Faça upload de um vídeo primeiro.")
 
@@ -175,7 +162,7 @@ with gr.Blocks(theme=THEME, css=css, title="Neuro Ads") as app:
     )
 
     with gr.Row():
-        video_input = gr.Video(label="Upload do Vídeo", height=300)
+        video_input = gr.File(label="Upload do Vídeo", file_types=["video"])
 
     analyze_btn = gr.Button(
         "🔬 Analisar Criativo",
