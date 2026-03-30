@@ -1,4 +1,4 @@
-# Core dependencies
+# Core
 gradio>=5.20
 spaces
 torch>=2.5.1,<2.7
@@ -14,7 +14,9 @@ huggingface_hub
 transformers
 soundfile
 anthropic
-# tribev2 sub-deps (pinned for Python 3.10 compat)
+ujson
+psutil
+# tribev2 and all deps (installed via --no-deps in app.py startup)
 exca==0.5.17
 neuraltrain==0.0.2
 x_transformers==1.27.20
@@ -29,5 +31,3 @@ mne_bids
 pyprep
 scikit-learn
 submitit
-ujson
-psutil

@@ -6,38 +6,67 @@ Faz upload de vídeo → roda TRIBE v2 → retorna análise neural completa.
 
 import subprocess
 import sys
+import os
+import pathlib
+import site
+import tempfile
 
-# Install neuralset and tribev2 bypassing Python version checks
+# ── Step 1: Install neuralset --no-deps ──────────────────────────────────────
 subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", "neuralset==0.0.2", "-q"])
-# tribev2 requires Python >=3.11 in pyproject.toml but works fine on 3.10
-# Clone, patch requires-python, then install
-import tempfile, os
-_tmpdir = tempfile.mkdtemp()
-subprocess.check_call(["git", "clone", "--depth=1", "https://github.com/facebookresearch/tribev2.git", _tmpdir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-# Patch pyproject.toml to remove python version constraint
-_pyproj = os.path.join(_tmpdir, "pyproject.toml")
-with open(_pyproj) as f:
-    _content = f.read()
-_content = _content.replace('requires-python = ">=3.11"', 'requires-python = ">=3.10"')
-with open(_pyproj, "w") as f:
-    f.write(_content)
-subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", _tmpdir, "-q"])
 
-# Patch neuralset's exca version check BEFORE importing it
-# neuralset/__init__.py raises RuntimeError if exca < 0.5.20, but 0.5.17 works fine
-import pathlib as _pl, site as _site
-for _sp in _site.getsitepackages() + [_site.getusersitepackages()]:
-    _ns_init = _pl.Path(_sp) / "neuralset" / "__init__.py"
-    if _ns_init.exists():
-        _src = _ns_init.read_text()
-        if 'raise RuntimeError' in _src and 'exca' in _src:
-            _src = _src.replace('raise RuntimeError(f"neuralset requires exca>={_XK_MIN} (pip install -U exca)")', 'pass  # patched for Python 3.10 compat')
-            _ns_init.write_text(_src)
-            print(f"Patched neuralset at {_ns_init}")
+# ── Step 2: Patch neuralset exca version check BEFORE any import ─────────────
+for sp in site.getsitepackages() + ([site.getusersitepackages()] if hasattr(site, 'getusersitepackages') else []):
+    ns_init = pathlib.Path(sp) / "neuralset" / "__init__.py"
+    if ns_init.exists():
+        src = ns_init.read_text()
+        if 'raise RuntimeError' in src and 'exca' in src:
+            # Comment out the version check entirely
+            lines = src.split('\n')
+            new_lines = []
+            for line in lines:
+                if 'raise RuntimeError' in line and 'exca' in line:
+                    new_lines.append(line.replace('raise RuntimeError', '# raise RuntimeError'))
+                else:
+                    new_lines.append(line)
+            ns_init.write_text('\n'.join(new_lines))
+            print(f"[startup] Patched neuralset exca check at {ns_init}")
             break
 
-import os
-import tempfile
+# ── Step 3: Install tribev2 (patch requires-python) ─────────────────────────
+_tmpdir = tempfile.mkdtemp()
+subprocess.check_call(
+    ["git", "clone", "--depth=1", "https://github.com/facebookresearch/tribev2.git", _tmpdir],
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+)
+_pyproj = os.path.join(_tmpdir, "pyproject.toml")
+with open(_pyproj) as f:
+    content = f.read()
+content = content.replace('requires-python = ">=3.11"', 'requires-python = ">=3.10"')
+with open(_pyproj, "w") as f:
+    f.write(content)
+subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", _tmpdir, "-q"])
+print("[startup] Installed tribev2 (patched for Python 3.10)")
+
+# ── Step 4: Patch neuralset base.py _get_discriminated_subclasses ────────────
+for sp in site.getsitepackages() + ([site.getusersitepackages()] if hasattr(site, 'getusersitepackages') else []):
+    base_py = pathlib.Path(sp) / "neuralset" / "events" / "transforms" / "base.py"
+    if base_py.exists():
+        src = base_py.read_text()
+        if '_get_discriminated_subclasses' in src:
+            # Replace the problematic method call with a try/except
+            src = src.replace(
+                'if name and name not in cls._get_discriminated_subclasses():',
+                'if name and hasattr(cls, "_get_discriminated_subclasses") and name not in cls._get_discriminated_subclasses():'
+            )
+            base_py.write_text(src)
+            print(f"[startup] Patched neuralset base.py at {base_py}")
+            break
+
+print("[startup] All patches applied, starting Gradio app...")
+
+# ── Now import everything ────────────────────────────────────────────────────
+
+import tempfile as _tempfile
 from pathlib import Path
 
 import gradio as gr
@@ -51,7 +80,7 @@ from neuro_pipeline import (
     generate_dashboard_html,
 )
 
-# ── Configuração ─────────────────────────────────────────────────────────────
+# ── Configuration ────────────────────────────────────────────────────────────
 
 CACHE_DIR = os.environ.get("CACHE_DIR", "./cache")
 ASSETS_DIR = Path(CACHE_DIR) / "results" / "assets"
@@ -60,18 +89,14 @@ MODEL = None
 
 
 def get_model():
-    """Carrega modelo na primeira chamada (lazy loading)."""
     global MODEL
     if MODEL is None:
         MODEL = load_model(cache_folder=CACHE_DIR, device="cpu", use_text=USE_TEXT)
     return MODEL
 
 
-# ── Inferência com GPU ───────────────────────────────────────────────────────
-
 @spaces.GPU(duration=180)
 def inference_gpu(video_path: str, progress=gr.Progress()):
-    """Roda inferência TRIBE v2 na GPU (ZeroGPU)."""
     model = get_model()
     progress(0.1, desc="Extraindo features de áudio, vídeo e texto...")
     preds = run_inference(video_path, model, use_text=USE_TEXT)
@@ -79,20 +104,14 @@ def inference_gpu(video_path: str, progress=gr.Progress()):
     return preds
 
 
-# ── Pipeline completo ────────────────────────────────────────────────────────
-
 def analyze_video(video_path: str, progress=gr.Progress()):
-    """Pipeline completo: upload → inferência → scoring → dashboard."""
     if not video_path:
         raise gr.Error("Faça upload de um vídeo primeiro.")
 
     progress(0.05, desc="Iniciando análise neural...")
-
-    # 1. Inferência na GPU
     preds = inference_gpu(video_path, progress)
     progress(0.6, desc="Computando scores neurais...")
 
-    # 2. Análise completa (CPU)
     data = full_analysis(
         video_path=video_path,
         preds=preds,
@@ -100,30 +119,23 @@ def analyze_video(video_path: str, progress=gr.Progress()):
     )
     progress(0.85, desc="Gerando dashboard...")
 
-    # 3. Gerar HTML
     html = generate_dashboard_html(data)
 
-    # 4. Salvar HTML para download
-    tmp = tempfile.NamedTemporaryFile(
+    tmp = _tempfile.NamedTemporaryFile(
         suffix=".html", prefix=f"neuro_ads_{data['videoName']}_",
         delete=False, mode="w", encoding="utf-8"
     )
     tmp.write(html)
     tmp.close()
 
-    # 5. Extrair dados para display no Gradio
     scores = data["scores"]
     grade = _get_grade(scores["neuroRank"])
 
-    # Diagnostics text
     diag_text = "\n".join(
         f"{'✅' if d['type']=='success' else '⚠️' if d['type']=='warning' else '❌' if d['type']=='error' else 'ℹ️'} "
         f"**{d['title']}** — {d['text']}"
         for d in data["diagnostics"]
     )
-
-    # Metrics prediction text
-    analysis_text = data.get("creativeAnalysis", "")
 
     progress(1.0, desc="Análise completa!")
 
@@ -148,80 +160,34 @@ def _get_grade(score):
     return "F"
 
 
-# ── Interface Gradio ─────────────────────────────────────────────────────────
+# ── Gradio Interface ─────────────────────────────────────────────────────────
 
-THEME = gr.themes.Base(
-    primary_hue=gr.themes.Color(
-        c50="#eef2ff", c100="#dde4ff", c200="#c2cfff", c300="#94aaff",
-        c400="#6c8cff", c500="#3367ff", c600="#004eea", c700="#002376",
-        c800="#001b61", c900="#000d3b", c950="#000724",
-    ),
-    neutral_hue=gr.themes.Color(
-        c50="#f1f3fc", c100="#e2e5f0", c200="#c5c9d6", c300="#a8abb3",
-        c400="#72757d", c500="#44484f", c600="#20262f", c700="#1b2028",
-        c800="#151a21", c900="#0f141a", c950="#0a0e14",
-    ),
-    font=["Inter", "sans-serif"],
-    font_mono=["Space Grotesk", "monospace"],
-)
-
-css = """
-.gradio-container { max-width: 900px !important; }
-.score-box { text-align: center; }
-.score-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-"""
-
-with gr.Blocks(theme=THEME, css=css, title="Neuro Ads") as app:
+with gr.Blocks(title="Neuro Ads") as app:
     gr.Markdown(
         """
-        # 🧠 Neuro Ads
-        ### Análise Cerebral de Criativos
+        # 🧠 Neuro Ads — Análise Cerebral de Criativos
 
         Faça upload de um vídeo de anúncio e receba uma análise neural completa
         baseada em predição de atividade cerebral (TRIBE v2 / Meta Research).
-
-        **Como funciona:** O modelo prediz como o cérebro humano reagiria ao seu vídeo,
-        mapeando ativação em 20.484 pontos do córtex cerebral a cada segundo.
         """
     )
 
-    with gr.Row():
-        video_input = gr.File(label="Upload do Vídeo", file_types=["video"])
+    video_input = gr.File(label="Upload do Vídeo", file_types=["video"])
 
-    analyze_btn = gr.Button(
-        "🔬 Analisar Criativo",
-        variant="primary",
-        size="lg",
-    )
+    analyze_btn = gr.Button("🔬 Analisar Criativo", variant="primary", size="lg")
 
-    # Results
-    neuro_rank_display = gr.Markdown(
-        value="*Faça upload de um vídeo e clique em Analisar*",
-        label="Neuro Rank",
-    )
+    neuro_rank_display = gr.Markdown(value="*Faça upload de um vídeo e clique em Analisar*")
 
     with gr.Row():
-        hook_score = gr.Number(label="🎯 Impacto do Hook (35%)", precision=1, interactive=False)
-        semantic_score = gr.Number(label="💬 Clareza Semântica (20%)", precision=1, interactive=False)
-        synergy_score = gr.Number(label="🔗 Sinergia Multimodal (25%)", precision=1, interactive=False)
+        hook_score = gr.Number(label="🎯 Hook (35%)", precision=1, interactive=False)
+        semantic_score = gr.Number(label="💬 Semântica (20%)", precision=1, interactive=False)
+        synergy_score = gr.Number(label="🔗 Sinergia (25%)", precision=1, interactive=False)
         coherence_score = gr.Number(label="📊 Coerência (20%)", precision=1, interactive=False)
 
     diagnostics_display = gr.Markdown(label="Diagnóstico")
-
     dashboard_file = gr.File(label="📥 Dashboard Completo (HTML)")
 
-    gr.Markdown(
-        """
-        ---
-        **Nota:** A análise usa apenas vídeo + áudio (sem transcrição de texto).
-        Para resultados completos com análise de texto/legendas, configure o modelo LLaMA 3.2.
-
-        Scores: **Hook** (atenção inicial) · **Semântica** (clareza da mensagem) ·
-        **Sinergia** (integração multimodal) · **Coerência** (sustentação do engajamento)
-
-        *Powered by TRIBE v2 (Meta Research) · Régua de scoring proprietária*
-        """
-    )
+    gr.Markdown("*Powered by TRIBE v2 (Meta Research)*")
 
     analyze_btn.click(
         fn=analyze_video,
