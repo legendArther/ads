@@ -20,12 +20,13 @@ for sp in site.getsitepackages() + ([site.getusersitepackages()] if hasattr(site
     if ns_init.exists():
         src = ns_init.read_text()
         if 'raise RuntimeError' in src and 'exca' in src:
-            # Comment out the version check entirely
+            # Replace the raise with pass, keeping indentation
             lines = src.split('\n')
             new_lines = []
             for line in lines:
                 if 'raise RuntimeError' in line and 'exca' in line:
-                    new_lines.append(line.replace('raise RuntimeError', '# raise RuntimeError'))
+                    indent = len(line) - len(line.lstrip())
+                    new_lines.append(' ' * indent + 'pass  # patched for py3.10')
                 else:
                     new_lines.append(line)
             ns_init.write_text('\n'.join(new_lines))
