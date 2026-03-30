@@ -3,13 +3,10 @@ title: Neuro Ads
 emoji: 🧠
 colorFrom: indigo
 colorTo: purple
-sdk: gradio
-sdk_version: "5.23.0"
-python_version: "3.11"
-app_file: app.py
+sdk: docker
 pinned: true
 license: mit
-hardware: zero-a10g
+suggested_hardware: t4-small
 ---
 
 # 🧠 Neuro Ads — Análise Cerebral de Criativos

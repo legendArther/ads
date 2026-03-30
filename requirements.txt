@@ -1,8 +1,6 @@
 # Core
 gradio>=5.20
-spaces
-torch>=2.5.1,<2.7
-torchvision>=0.20,<0.22
+tribev2 @ git+https://github.com/facebookresearch/tribev2.git
 numpy
 nilearn
 nibabel
@@ -16,18 +14,3 @@ soundfile
 anthropic
 ujson
 psutil
-# tribev2 and all deps (installed via --no-deps in app.py startup)
-exca==0.5.17
-neuraltrain==0.0.2
-x_transformers==1.27.20
-einops
-gtts
-langdetect
-spacy
-Levenshtein
-julius
-mne
-mne_bids
-pyprep
-scikit-learn
-submitit
