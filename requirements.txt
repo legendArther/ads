@@ -1,0 +1,31 @@
+# Core dependencies
+gradio>=5.20
+spaces
+torch>=2.5.1,<2.7
+torchvision>=0.20,<0.22
+numpy
+nilearn
+nibabel
+matplotlib
+scipy
+trimesh
+moviepy>=2.2.1
+huggingface_hub
+transformers
+soundfile
+anthropic
+# tribev2 sub-deps (pinned for Python 3.10 compat)
+exca==0.5.17
+neuraltrain==0.0.2
+x_transformers==1.27.20
+einops
+gtts
+langdetect
+spacy
+Levenshtein
+julius
+mne
+mne_bids
+pyprep
+scikit-learn
+submitit
