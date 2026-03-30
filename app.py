@@ -68,6 +68,9 @@ def analyze_video(video_path: str, progress=gr.Progress()):
     tmp.close()
 
     scores = data["scores"]
+    # Convert numpy types to native Python (Gradio can't serialize numpy.float32)
+    for k, v in scores.items():
+        scores[k] = float(v)
     grade = _get_grade(scores["neuroRank"])
 
     diag_text = "\n".join(
@@ -80,10 +83,10 @@ def analyze_video(video_path: str, progress=gr.Progress()):
 
     return (
         f"## {scores['neuroRank']:.1f} / 100  —  Nota {grade}",
-        scores["hook"],
-        scores["semantic"],
-        scores["synergy"],
-        scores["coherence"],
+        float(scores["hook"]),
+        float(scores["semantic"]),
+        float(scores["synergy"]),
+        float(scores["coherence"]),
         diag_text,
         tmp.name,
     )

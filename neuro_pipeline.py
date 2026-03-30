@@ -304,13 +304,22 @@ def compute_scores(preds: np.ndarray, video_duration: float):
         video_duration, integration_ts, prefrontal_ts, vwfa_ts, lang_ts
     )
 
+    # Ensure all values are native Python types (not numpy) for JSON serialization
+    def _f(v):
+        return round(float(v), 6) if hasattr(v, 'item') else round(v, 6)
+
+    # Convert window activations to native floats
+    clean_wa = {}
+    for wn, wv in window_activations.items():
+        clean_wa[wn] = {sk: float(sv) for sk, sv in wv.items()}
+
     return {
         "scores": {
-            "hook": round(hook_score, 1),
-            "semantic": round(semantic_score, 1),
-            "synergy": round(synergy_score, 1),
-            "coherence": round(coherence_score, 1),
-            "neuroRank": round(neuro_rank, 1),
+            "hook": round(float(hook_score), 1),
+            "semantic": round(float(semantic_score), 1),
+            "synergy": round(float(synergy_score), 1),
+            "coherence": round(float(coherence_score), 1),
+            "neuroRank": round(float(neuro_rank), 1),
         },
         "weights": WEIGHTS,
         "timeseries": {
@@ -318,16 +327,16 @@ def compute_scores(preds: np.ndarray, video_duration: float):
             "systems": {k: v.tolist() for k, v in system_ts.items()},
         },
         "systems": {k: {"label": v["label"], "color": v["color"]} for k, v in SYSTEMS.items()},
-        "windows": {k: {"label": v["label"], "color": v["color"], "start": v["start"], "end": v["end"]}
+        "windows": {k: {"label": v["label"], "color": v["color"], "start": float(v["start"]), "end": float(v["end"])}
                     for k, v in WINDOWS.items()},
-        "windowActivations": window_activations,
+        "windowActivations": clean_wa,
         "diagnostics": diagnostics,
         "creativeAnalysis": creative_analysis,
         "details": {
-            "hookSlope": round(hook_slope, 6),
-            "sustainRatio": round(sustain_ratio, 3),
-            "maxRelativeDrop": round(max_relative_drop, 3),
-            "cv": round(cv, 3),
+            "hookSlope": round(float(hook_slope), 6),
+            "sustainRatio": round(float(sustain_ratio), 3),
+            "maxRelativeDrop": round(float(max_relative_drop), 3),
+            "cv": round(float(cv), 3),
         },
     }
 
