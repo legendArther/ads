@@ -57,21 +57,9 @@ def analyze_video(video_path: str, progress=gr.Progress()):
         assets_dir=ASSETS_DIR if ASSETS_DIR.exists() else None,
     )
 
-    progress(0.85, desc="Gerando dashboard...")
-    html = generate_dashboard_html(data)
-
-    tmp = tempfile.NamedTemporaryFile(
-        suffix=".html", prefix=f"neuro_ads_{data['videoName']}_",
-        delete=False, mode="w", encoding="utf-8"
-    )
-    tmp.write(html)
-    tmp.close()
-
     scores = data["scores"]
-    # Convert numpy types to native Python (Gradio can't serialize numpy.float32)
     for k, v in scores.items():
         scores[k] = float(v)
-    grade = _get_grade(scores["neuroRank"])
 
     diag_text = "\n".join(
         f"{'✅' if d['type']=='success' else '⚠️' if d['type']=='warning' else '❌' if d['type']=='error' else 'ℹ️'} "
@@ -81,14 +69,13 @@ def analyze_video(video_path: str, progress=gr.Progress()):
 
     progress(1.0, desc="Análise completa!")
 
+    # Return ONLY lightweight data (no dashboard HTML file — it's 8MB and kills the Gradio Client)
     return (
-        f"## {scores['neuroRank']:.1f} / 100  —  Nota {grade}",
         float(scores["hook"]),
         float(scores["semantic"]),
         float(scores["synergy"]),
         float(scores["coherence"]),
         diag_text,
-        tmp.name,
     )
 
 
@@ -116,7 +103,6 @@ with gr.Blocks(title="Neuro Ads") as app:
 
     video_input = gr.File(label="Upload do Vídeo", file_types=["video"])
     analyze_btn = gr.Button("🔬 Analisar Criativo", variant="primary", size="lg")
-    neuro_rank_display = gr.Markdown(value="*Faça upload de um vídeo e clique em Analisar*")
 
     with gr.Row():
         hook_score = gr.Number(label="🎯 Hook (35%)", precision=1, interactive=False)
@@ -125,7 +111,6 @@ with gr.Blocks(title="Neuro Ads") as app:
         coherence_score = gr.Number(label="📊 Coerência (20%)", precision=1, interactive=False)
 
     diagnostics_display = gr.Markdown(label="Diagnóstico")
-    dashboard_file = gr.File(label="📥 Dashboard Completo (HTML)")
 
     gr.Markdown("*Powered by TRIBE v2 (Meta Research)*")
 
@@ -133,9 +118,9 @@ with gr.Blocks(title="Neuro Ads") as app:
         fn=analyze_video,
         inputs=[video_input],
         outputs=[
-            neuro_rank_display, hook_score, semantic_score,
+            hook_score, semantic_score,
             synergy_score, coherence_score,
-            diagnostics_display, dashboard_file,
+            diagnostics_display,
         ],
         api_name="analyze",
     )
