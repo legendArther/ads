@@ -23,18 +23,18 @@ with open(_pyproj, "w") as f:
     f.write(_content)
 subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", _tmpdir, "-q"])
 
-# Patch neuralset's exca version check (requires >=0.5.20 but only 0.5.17 works on Python 3.10)
-try:
-    import importlib, neuralset as _ns, pathlib
-    _init = pathlib.Path(_ns.__file__)
-    _src = _init.read_text()
-    if 'raise RuntimeError' in _src and 'exca' in _src:
-        _src = _src.replace('raise RuntimeError(f"neuralset requires exca>={_XK_MIN}', '# patched: ')
-        _init.write_text(_src)
-        importlib.reload(_ns)
-        print("Patched neuralset exca version check")
-except Exception as e:
-    print(f"Patch note: {e}")
+# Patch neuralset's exca version check BEFORE importing it
+# neuralset/__init__.py raises RuntimeError if exca < 0.5.20, but 0.5.17 works fine
+import pathlib as _pl, site as _site
+for _sp in _site.getsitepackages() + [_site.getusersitepackages()]:
+    _ns_init = _pl.Path(_sp) / "neuralset" / "__init__.py"
+    if _ns_init.exists():
+        _src = _ns_init.read_text()
+        if 'raise RuntimeError' in _src and 'exca' in _src:
+            _src = _src.replace('raise RuntimeError(f"neuralset requires exca>={_XK_MIN} (pip install -U exca)")', 'pass  # patched for Python 3.10 compat')
+            _ns_init.write_text(_src)
+            print(f"Patched neuralset at {_ns_init}")
+            break
 
 import os
 import tempfile
