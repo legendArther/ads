@@ -29,3 +29,5 @@ mne_bids
 pyprep
 scikit-learn
 submitit
+ujson
+psutil
