@@ -7,10 +7,21 @@ Faz upload de vídeo → roda TRIBE v2 → retorna análise neural completa.
 import subprocess
 import sys
 
-# Install neuralset and tribev2 with --no-deps to avoid exca>=0.5.20 conflict on Python 3.10
+# Install neuralset and tribev2 bypassing Python version checks
 subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", "neuralset==0.0.2", "-q"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps",
-                       "tribev2@git+https://github.com/facebookresearch/tribev2.git", "-q"])
+# tribev2 requires Python >=3.11 in pyproject.toml but works fine on 3.10
+# Clone, patch requires-python, then install
+import tempfile, os
+_tmpdir = tempfile.mkdtemp()
+subprocess.check_call(["git", "clone", "--depth=1", "https://github.com/facebookresearch/tribev2.git", _tmpdir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# Patch pyproject.toml to remove python version constraint
+_pyproj = os.path.join(_tmpdir, "pyproject.toml")
+with open(_pyproj) as f:
+    _content = f.read()
+_content = _content.replace('requires-python = ">=3.11"', 'requires-python = ">=3.10"')
+with open(_pyproj, "w") as f:
+    f.write(_content)
+subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", _tmpdir, "-q"])
 
 # Patch neuralset's exca version check (requires >=0.5.20 but only 0.5.17 works on Python 3.10)
 try:
