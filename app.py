@@ -23,7 +23,7 @@ from neuro_pipeline import (
 
 CACHE_DIR = os.environ.get("CACHE_DIR", "./cache")
 ASSETS_DIR = Path(CACHE_DIR) / "results" / "assets"
-USE_TEXT = os.environ.get("USE_TEXT", "false").lower() == "true"
+USE_TEXT = os.environ.get("USE_TEXT", "true").lower() == "true"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL = None
 

@@ -97,7 +97,7 @@ def load_model(cache_folder="./cache", device="auto", use_text=True):
     if use_text:
         config_update = {
             "data.features_to_use": ["audio", "video", "text"],
-            "data.text_feature.model_name": "unsloth/Llama-3.2-3B",
+            "data.text_feature.model_name": "meta-llama/Llama-3.2-3B",
         }
     else:
         config_update = {
