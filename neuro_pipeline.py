@@ -1,7 +1,7 @@
-"""Neuro Ads Pipeline — Análise neural completa de criativos.
+"""Neuro Ads Pipeline — Complete neural analysis of creatives.
 
-Combina inferência TRIBE v2 + scoring + geração de dashboard HTML.
-Projetado para rodar no HuggingFace Spaces com ZeroGPU.
+Combines TRIBE v2 inference + scoring + HTML dashboard generation.
+Designed to run on HuggingFace Spaces with ZeroGPU.
 """
 
 import base64
@@ -20,14 +20,14 @@ import pandas as pd
 import torch
 
 
-# ── Sistemas funcionais (atlas Destrieux) ────────────────────────────────────
+# ── Functional systems (Destrieux atlas) ────────────────────────────────────
 
 SYSTEMS = {
     "visual": {
         "regions": ["Pole_occipital", "G_occipital_middle", "S_oc_middle_and_Lunatus",
                      "G_and_S_occipital_inf", "S_oc_sup_and_transversal", "S_calcarine",
                      "G_occipital_sup", "G_cuneus"],
-        "label": "Sistema Visual (V1-V3)", "color": "#FF6B35",
+        "label": "Visual System (V1-V3)", "color": "#FF6B35",
     },
     "motion": {
         "regions": ["S_oc-temp_lat", "G_temporal_middle"],
@@ -346,60 +346,60 @@ def _compute_diagnostics(hook_score, semantic_score, synergy_score, coherence_sc
     diagnostics = []
 
     if hook_score >= 70:
-        diagnostics.append({"type": "success", "title": "Hook forte",
-                             "text": "Ativação visual e auditiva sobe rápido nos primeiros 1,5s. Bom thumb-stop."})
+        diagnostics.append({"type": "success", "title": "Strong Hook",
+                             "text": "Visual and auditory activation rises quickly in the first 1.5s. Good thumb-stop."})
     elif hook_score >= 40:
-        diagnostics.append({"type": "warning", "title": "Hook moderado",
-                             "text": "Sistema visual ativa mas não há pico forte. Considere elementos mais impactantes nos primeiros frames."})
+        diagnostics.append({"type": "warning", "title": "Moderate Hook",
+                             "text": "Visual system activates but there is no strong peak. Consider more impactful elements in the first frames."})
     else:
-        diagnostics.append({"type": "error", "title": "Hook fraco",
-                             "text": "Ativação inicial baixa. O thumb-stop está fraco. Precisa de mais contraste visual, movimento ou som nos primeiros 1,5s."})
+        diagnostics.append({"type": "error", "title": "Weak Hook",
+                             "text": "Low initial activation. The thumb-stop is weak. Needs more visual contrast, movement, or sound in the first 1.5s."})
 
     visual_mean = system_ts["visual"].mean()
     integration_mean = system_ts["integration"].mean()
     if visual_mean > global_mean * 1.5 and integration_mean < global_mean * 0.8:
-        diagnostics.append({"type": "warning", "title": "Visual alto, integração baixa",
-                             "text": "Hook chamativo mas mensagem fraca. O anúncio prende atenção visual mas não 'fecha sentido'."})
+        diagnostics.append({"type": "warning", "title": "High Visual, Low Integration",
+                             "text": "Eye-catching hook but weak message. The ad grabs visual attention but does not 'close the loop'."})
 
     lang_mean = system_ts["language"].mean()
     if lang_mean > global_mean and visual_mean < global_mean * 0.8:
-        diagnostics.append({"type": "info", "title": "Promessa clara, pouco stop power",
-                             "text": "Linguagem ativa mas visual fraco. Boa mensagem mas pode não parar o scroll."})
+        diagnostics.append({"type": "info", "title": "Clear Promise, Low Stop Power",
+                             "text": "Language active but visual weak. Good message but might not stop the scroll."})
 
     vwfa_mean = system_ts["vwfa"].mean()
     if vwfa_mean > visual_mean * 0.8:
-        diagnostics.append({"type": "warning", "title": "Dependente de leitura",
-                             "text": "VWFA muito ativo. Criativo pode depender demais de texto na tela."})
+        diagnostics.append({"type": "warning", "title": "Reading Dependent",
+                             "text": "VWFA very active. Creative may depend too much on on-screen text."})
 
     integration_ts = system_ts["integration"]
     syn_early = integration_ts[:max(1, msg3_s)].mean()
     syn_late = integration_ts[msg3_s:].mean()
     if syn_late > syn_early * 1.5 and syn_early < global_mean * 0.5:
-        diagnostics.append({"type": "warning", "title": "Integração tardia",
-                             "text": "Claim/prova/demo está entrando tarde. A integração multimodal só aparece após os 8s."})
+        diagnostics.append({"type": "warning", "title": "Late Integration",
+                             "text": "Claim/proof/demo is entering late. Multimodal integration only appears after 8s."})
 
     if len(overall_ts) > 5:
         hook_peak = overall_ts[:3].max()
         post_hook = overall_ts[3:8].mean()
         if post_hook < hook_peak * 0.5:
-            diagnostics.append({"type": "error", "title": "Queda brusca após hook",
-                                 "text": "O meio do vídeo perde engajamento. Precisa de nova recompensa visual ou prova social após o hook."})
+            diagnostics.append({"type": "error", "title": "Sharp Drop After Hook",
+                                 "text": "The middle of the video loses engagement. Needs a new visual reward or social proof after the hook."})
 
     if sustain_ratio > 1.1:
-        diagnostics.append({"type": "success", "title": "Boa sustentação",
-                             "text": "A segunda metade do vídeo mantém ou cresce em ativação. Bom para retenção."})
+        diagnostics.append({"type": "success", "title": "Good Sustain",
+                             "text": "The second half of the video maintains or increases in activation. Good for retention."})
     elif sustain_ratio < 0.6:
-        diagnostics.append({"type": "error", "title": "Perda de engajamento",
-                             "text": "A segunda metade perde mais de 40% da ativação. Revise o ritmo após o hook."})
+        diagnostics.append({"type": "error", "title": "Loss of Engagement",
+                             "text": "The second half loses more than 40% of activation. Review the pacing after the hook."})
 
     ffa_mean = system_ts["ffa"].mean()
     if ffa_mean > global_mean * 1.2:
-        diagnostics.append({"type": "info", "title": "Rostos detectados",
-                             "text": "FFA (área de rostos) ativa. Presença de rostos gera conexão emocional."})
+        diagnostics.append({"type": "info", "title": "Faces Detected",
+                             "text": "FFA (face area) active. Presence of faces generates emotional connection."})
 
     if not diagnostics:
-        diagnostics.append({"type": "info", "title": "Perfil neutro",
-                             "text": "Nenhum padrão forte detectado. O anúncio pode precisar de mais contraste emocional."})
+        diagnostics.append({"type": "info", "title": "Neutral Profile",
+                             "text": "No strong pattern detected. The ad may need more emotional contrast."})
 
     return diagnostics
 
@@ -410,128 +410,129 @@ def _generate_creative_analysis(hook_score, semantic_score, synergy_score, coher
                                 integration_ts, prefrontal_ts, vwfa_ts, lang_ts):
     lines = []
 
-    lines.append("<h4>Como o criativo performa hoje</h4>")
+    lines.append("<h4>Creative Performance Diagnosis</h4>")
 
     if hook_score >= 70:
-        lines.append(f"<p>O <strong>hook é o ponto forte</strong> deste criativo (score {hook_score:.0f}/100). "
-                     "O sistema visual e auditivo responde com intensidade nos primeiros 1,5 segundos, "
-                     "o que indica bom potencial de thumb-stop no feed. "
-                     "Isso deve se traduzir em uma boa taxa de 3s view.</p>")
+        lines.append(f"<p>The <strong>hook is the strong point</strong> of this creative (score {hook_score:.0f}/100). "
+                     "The visual and auditory systems respond intensely in the first 1.5 seconds, "
+                     "indicating a high potential for thumb-stopping in the feed. "
+                     "This should translate to a strong 3s view rate.</p>")
     else:
-        lines.append(f"<p>O <strong>hook está fraco</strong> (score {hook_score:.0f}/100). "
-                     "O sistema visual não atinge pico relevante nos primeiros 1,5s. "
-                     "Isso provavelmente gera baixa taxa de 3s view e thumb-stop fraco.</p>")
+        lines.append(f"<p>The <strong>hook is weak</strong> (score {hook_score:.0f}/100). "
+                     "The visual system does not reach a relevant peak in the first 1.5s. "
+                     "This likely results in a low 3s view rate and poor thumb-stopping.</p>")
 
     if coherence_score < 50:
-        lines.append(f"<p>O <strong>maior problema é a coerência</strong> (score {coherence_score:.0f}/100). "
-                     f"A razão segunda metade/primeira metade é de apenas {sustain_ratio:.2f}x, "
-                     "indicando que o cérebro 'desliga' após o impacto inicial. "
-                     "Isso afeta diretamente a retenção e completude de visualização.</p>")
+        lines.append(f"<p>The <strong>main issue is coherence</strong> (score {coherence_score:.0f}/100). "
+                     f"The second half / first half ratio is only {sustain_ratio:.2f}x, "
+                     "indicating the brain 'shuts off' after the initial impact. "
+                     "This directly affects retention and video completion rates.</p>")
     elif coherence_score >= 70:
-        lines.append(f"<p>A <strong>coerência é sólida</strong> (score {coherence_score:.0f}/100). "
-                     "O engajamento neural se mantém ao longo do vídeo, sem quedas bruscas. "
-                     "Isso favorece boas taxas de retenção.</p>")
+        lines.append(f"<p>The <strong>coherence is solid</strong> (score {coherence_score:.0f}/100). "
+                     "Neural engagement is maintained throughout the video without sharp drops. "
+                     "This favors good retention rates.</p>")
 
     if synergy_score < 50:
-        lines.append(f"<p>A <strong>sinergia multimodal está baixa</strong> (score {synergy_score:.0f}/100). "
-                     "As áreas de integração (TPJ, pré-frontal) não estão ativando tanto quanto as áreas sensoriais primárias. "
-                     "Isso sugere que o criativo impacta os sentidos mas não 'fecha uma ideia' — "
-                     "o espectador vê e ouve, mas não integra a mensagem.</p>")
+        lines.append(f"<p>The <strong>multimodal synergy is low</strong> (score {synergy_score:.0f}/100). "
+                     "Integration areas (TPJ, Prefrontal) are not activating as much as primary sensory areas. "
+                     "This suggests the creative impacts the senses but does not 'connect the dots'— "
+                     "the viewer sees and hears, but does not integrate the message.</p>")
     elif synergy_score >= 70:
-        lines.append(f"<p>A <strong>sinergia multimodal é boa</strong> (score {synergy_score:.0f}/100). "
-                     "Áreas de integração cerebral (TPJ/pré-frontal) ativam bem, indicando que vídeo+áudio "
-                     "se complementam e a mensagem 'fecha sentido'.</p>")
+        lines.append(f"<p>The <strong>multimodal synergy is good</strong> (score {synergy_score:.0f}/100). "
+                     "Brain integration areas (TPJ/Prefrontal) activate well, indicating that video+audio "
+                     "complement each other and the message 'closes the loop'.</p>")
 
     if semantic_score >= 60:
-        lines.append(f"<p>A <strong>clareza semântica é adequada</strong> (score {semantic_score:.0f}/100). "
-                     "Áreas de linguagem respondem ao conteúdo verbal/textual do anúncio.</p>")
+        lines.append(f"<p>The <strong>semantic clarity is adequate</strong> (score {semantic_score:.0f}/100). "
+                     "Language areas respond to the verbal/text content of the ad.</p>")
     else:
-        lines.append(f"<p>A <strong>clareza semântica está fraca</strong> (score {semantic_score:.0f}/100). "
-                     "As áreas de linguagem (Broca/STS) não estão processando bem a mensagem. "
-                     "O claim pode estar pouco claro ou entrando tarde demais.</p>")
+        lines.append(f"<p>The <strong>semantic clarity is weak</strong> (score {semantic_score:.0f}/100). "
+                     "Language areas (Broca/STS) are not processing the message effectively. "
+                     "The claim may be unclear or entering too late.</p>")
 
     # Suggestions
-    lines.append("<h4>Como melhorar este criativo</h4><ol>")
+    lines.append("<h4>Optimization Roadmap</h4><ol>")
 
     if coherence_score < 60:
-        lines.append("<li><strong>Adicione 'recompensas' no meio do vídeo:</strong> "
-                     "Após o hook (3-8s), insira prova social, demonstração do produto, ou corte visual novo. "
-                     "O cérebro precisa de estímulos novos a cada 3-5s para manter a ativação.</li>")
+        lines.append("<li><strong>Add 'rewards' in the middle of the video:</strong> "
+                     "After the hook (3-8s), insert social proof, product demo, or a new visual cut. "
+                     "The brain needs new stimuli every 3-5s to maintain activation.</li>")
 
     if synergy_score < 60:
-        lines.append("<li><strong>Sincronize melhor vídeo + áudio + texto:</strong> "
-                     "Quando o claim verbal entrar, tenha o visual reforçando a mesma mensagem. "
-                     "A integração multimodal (TPJ) dispara quando os sentidos convergem para a mesma ideia.</li>")
+        lines.append("<li><strong>Better synchronize video + audio + text:</strong> "
+                     "When the verbal claim enters, ensure the visual reinforces the same message. "
+                     "Multimodal integration (TPJ) triggers when senses converge on the same idea.</li>")
 
     integration_peak_idx = int(np.argmax(integration_ts))
     integration_peak_time = integration_peak_idx * seg_duration
     if integration_peak_time < video_duration * 0.7:
-        lines.append(f"<li><strong>Reposicione o CTA/brand:</strong> "
-                     f"O pico de integração cerebral acontece por volta dos {integration_peak_time:.0f}s. "
-                     "Esse é o melhor momento para o CTA — o cérebro está em modo de 'fechar sentido'. "
-                     "Colocar o CTA sozinho no final perde esse momento.</li>")
+        lines.append(f"<li><strong>Reposition CTA/branding:</strong> "
+                     f"The peak of brain integration happens around {integration_peak_time:.0f}s. "
+                     "This is the best moment for the CTA—the brain is in 'closing loop' mode. "
+                     "Placing the CTA alone at the end misses this window.</li>")
 
     if hook_score >= 70 and coherence_score < 50:
-        lines.append("<li><strong>O hook funciona, o corpo não:</strong> "
-                     "Mantenha os primeiros 1,5s intactos e refaça o trecho de 3-15s. "
-                     "Teste com demonstração de produto, depoimento, ou sequência rápida de benefícios.</li>")
+        lines.append("<li><strong>Hook works, body doesn't:</strong> "
+                     "Keep the first 1.5s intact and rework the 3-15s segment. "
+                     "Test with product demos, testimonials, or a quick sequence of benefits.</li>")
 
     visual_mean = system_ts["visual"].mean()
     vwfa_mean = vwfa_ts.mean()
     if vwfa_mean > visual_mean * 0.6:
-        lines.append("<li><strong>Reduza a dependência de texto na tela:</strong> "
-                     "A VWFA está ativando muito. Substitua parte do texto por demonstração visual. "
-                     "Lembre que 80% dos vídeos no feed são assistidos sem som — mas leitura não substitui impacto visual.</li>")
+        lines.append("<li><strong>Reduce dependency on on-screen text:</strong> "
+                     "The VWFA is activating heavily. Replace part of the text with visual demonstration. "
+                     "Remember 80% of feed videos are watched without sound—but reading does not replace visual impact.</li>")
 
     sensory_max = max(visual_mean, system_ts["auditory"].mean())
     if integration_ts.mean() < sensory_max * 0.5:
-        lines.append("<li><strong>Construa uma narrativa mais clara:</strong> "
-                     "As áreas sensoriais ativam bem mas as áreas de integração não acompanham. "
-                     "Isso indica 'barulho visual/sonoro' sem uma história coerente. "
-                     "Simplifique a mensagem: 1 problema → 1 solução → 1 CTA.</li>")
+        lines.append("<li><strong>Build a clearer narrative:</strong> "
+                     "Sensory areas activate well but integration areas don't follow. "
+                     "This indicates 'visual/auditory noise' without a coherent story. "
+                     "Simplify the message: 1 problem → 1 solution → 1 CTA.</li>")
 
     lines.append("</ol>")
 
     # Metrics prediction
-    lines.append("<h4>Previsão de impacto nas métricas</h4>")
+    lines.append("<h4>Metric Projections</h4>")
     lines.append("<table class='metrics-table'><thead><tr>"
-                 "<th>Métrica</th><th>Previsão</th><th>Sinal neural</th></tr></thead><tbody>")
+                 "<th>Metric</th><th>Projection</th><th>Neural Signal</th></tr></thead><tbody>")
 
     if hook_score >= 70:
-        lines.append("<tr><td>Taxa de 3s view</td><td style='color:#22c55e'>Alta</td>"
-                     "<td>Ativação visual/auditiva forte no hook</td></tr>")
+        lines.append("<tr><td>3s view rate</td><td style='color:#22c55e'>High</td>"
+                     "<td>Strong visual/auditory activation at hook</td></tr>")
     else:
-        lines.append("<tr><td>Taxa de 3s view</td><td style='color:#ef4444'>Baixa</td>"
-                     "<td>Hook sem impacto sensorial suficiente</td></tr>")
+        lines.append("<tr><td>3s view rate</td><td style='color:#ef4444'>Low</td>"
+                     "<td>Hook lacking sufficient sensory impact</td></tr>")
 
     if coherence_score >= 60:
-        lines.append("<tr><td>Retenção</td><td style='color:#22c55e'>Boa</td>"
-                     "<td>Engajamento sustentado ao longo do vídeo</td></tr>")
+        lines.append("<tr><td>Retention</td><td style='color:#22c55e'>Good</td>"
+                     "<td>Sustained engagement throughout the video</td></tr>")
     else:
-        lines.append("<tr><td>Retenção</td><td style='color:#ef4444'>Fraca</td>"
-                     "<td>Queda de ativação após hook — espectador tende a abandonar</td></tr>")
+        lines.append("<tr><td>Retention</td><td style='color:#ef4444'>Weak</td>"
+                     "<td>Drop in activation after hook—viewer tends to drop off</td></tr>")
 
     if synergy_score >= 60 and semantic_score >= 50:
-        lines.append("<tr><td>CTR</td><td style='color:#22c55e'>Bom</td>"
-                     "<td>Integração multimodal + clareza da mensagem</td></tr>")
+        lines.append("<tr><td>CTR</td><td style='color:#22c55e'>Good</td>"
+                     "<td>Multimodal integration + message clarity</td></tr>")
     elif synergy_score >= 50 or semantic_score >= 50:
-        lines.append("<tr><td>CTR</td><td style='color:#f59e0b'>Moderado</td>"
-                     "<td>Mensagem parcialmente integrada</td></tr>")
+        lines.append("<tr><td>CTR</td><td style='color:#f59e0b'>Moderate</td>"
+                     "<td>Message partially integrated</td></tr>")
     else:
-        lines.append("<tr><td>CTR</td><td style='color:#ef4444'>Baixo</td>"
-                     "<td>Falta integração e clareza na proposta</td></tr>")
+        lines.append("<tr><td>CTR</td><td style='color:#ef4444'>Low</td>"
+                     "<td>Lack of integration and clarity in proposal</td></tr>")
 
     if neuro_rank >= 70 and prefrontal_ts.mean() > global_mean:
-        lines.append("<tr><td>Conversão</td><td style='color:#22c55e'>Promissora</td>"
-                     "<td>Pré-frontal ativo + neuro rank alto</td></tr>")
+        lines.append("<tr><td>Conversion</td><td style='color:#22c55e'>Promising</td>"
+                     "<td>Active prefrontal + high neuro rank</td></tr>")
     elif neuro_rank >= 50:
-        lines.append("<tr><td>Conversão</td><td style='color:#f59e0b'>Incerta</td>"
-                     "<td>Sinal cerebral misto — depende do público e oferta</td></tr>")
+        lines.append("<tr><td>Conversion</td><td style='color:#f59e0b'>Uncertain</td>"
+                     "<td>Mixed brain signals—depends on audience and offer</td></tr>")
     else:
-        lines.append("<tr><td>Conversão</td><td style='color:#ef4444'>Fraca</td>"
-                     "<td>Ativação insuficiente em áreas de decisão</td></tr>")
+        lines.append("<tr><td>Conversion</td><td style='color:#ef4444'>Weak</td>"
+                     "<td>Insufficient activation in decision areas</td></tr>")
 
     lines.append("</tbody></table>")
+    return "\n".join(lines)
     return "\n".join(lines)
 
 
@@ -542,9 +543,9 @@ def _generate_creative_analysis(hook_score, semantic_score, synergy_score, coher
 def generate_ai_analysis(scores: dict, diagnostics: list, details: dict,
                          system_timeseries: dict, window_activations: dict,
                          video_name: str, video_duration: float) -> str | None:
-    """Gera análise profunda do criativo usando Claude API.
+    """Generates deep creative analysis using Claude API.
 
-    Retorna HTML formatado com insights personalizados, ou None se a API não estiver configurada.
+    Returns HTML formatted with personalized insights, or None if the API is not configured.
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -556,57 +557,57 @@ def generate_ai_analysis(scores: dict, diagnostics: list, details: dict,
     except ImportError:
         return None
 
-    # Preparar contexto neural para o prompt
+    # Prepare neural context for the prompt
     scores_info = scores
     top_systems_per_window = {}
     for win_name, sys_acts in window_activations.items():
         sorted_sys = sorted(sys_acts.items(), key=lambda x: x[1], reverse=True)[:4]
         top_systems_per_window[win_name] = sorted_sys
 
-    prompt = f"""Você é um especialista em neuromarketing e análise de criativos publicitários.
-Analise os dados de ativação cerebral abaixo para o vídeo "{video_name}" ({video_duration:.0f}s).
+    prompt = f"""You are an expert in neuromarketing and advertising creative analysis.
+Analyze the brain activation data below for the video "{video_name}" ({video_duration:.0f}s).
 
-SCORES NEURAIS:
-- Impacto do Hook: {scores_info['hook']}/100 (peso 35%)
-- Clareza Semântica: {scores_info['semantic']}/100 (peso 20%)
-- Sinergia Multimodal: {scores_info['synergy']}/100 (peso 25%)
-- Coerência do Anúncio: {scores_info['coherence']}/100 (peso 20%)
-- Neuro Rank Final: {scores_info['neuroRank']}/100
+NEURAL SCORES:
+- Hook Impact: {scores_info['hook']}/100 (weight 35%)
+- Semantic Clarity: {scores_info['semantic']}/100 (weight 20%)
+- Multimodal Synergy: {scores_info['synergy']}/100 (weight 25%)
+- Ad Coherence: {scores_info['coherence']}/100 (weight 20%)
+- Final Neuro Rank: {scores_info['neuroRank']}/100
 
-DETALHES TÉCNICOS:
-- Inclinação do hook (slope): {details['hookSlope']:.6f} (positivo = ativação crescente)
-- Razão sustentação (2ª metade / 1ª metade): {details['sustainRatio']:.2f}x
-- Maior queda relativa de ativação: {details['maxRelativeDrop']:.2f}
-- Coeficiente de variação: {details['cv']:.3f}
+TECHNICAL DETAILS:
+- Hook slope: {details['hookSlope']:.6f} (positive = increasing activation)
+- Sustain ratio (2nd half / 1st half): {details['sustainRatio']:.2f}x
+- Largest relative drop in activation: {details['maxRelativeDrop']:.2f}
+- Coefficient of variation: {details['cv']:.3f}
 
-DIAGNÓSTICOS AUTOMÁTICOS:
+AUTOMATIC DIAGNOSTICS:
 {chr(10).join(f"- [{d['type'].upper()}] {d['title']}: {d['text']}" for d in diagnostics)}
 
-ATIVAÇÃO POR JANELA TEMPORAL:
+ACTIVATION BY TIME WINDOW:
 {chr(10).join(f"- {win}: " + ", ".join(f"{s}={v:.5f}" for s, v in acts) for win, acts in top_systems_per_window.items())}
 
-INSTRUÇÕES:
-Gere uma análise em HTML (sem tags html/body/head, apenas conteúdo) com estas seções:
+INSTRUCTIONS:
+Generate an analysis in HTML (no html/body/head tags, just content) with these sections:
 
-1. <h4>Diagnóstico Neural do Criativo</h4>
-   Analise o padrão de ativação cerebral como um todo. O que os dados revelam sobre como o cérebro processa este anúncio? Conecte os scores com o que isso significa em termos de performance de mídia paga. Seja específico para ESTE criativo, não genérico.
+1. <h4>Neural Creative Diagnosis</h4>
+   Analyze the overall brain activation pattern. What do the data reveal about how the brain processes this ad? Connect the scores with what this means in terms of paid media performance. Be specific to THIS creative, not generic.
 
-2. <h4>O que Funciona e o que Não Funciona</h4>
-   Liste pontos fortes e fracos com base nos dados neurais. Para cada ponto, explique QUAL região cerebral indica isso e POR QUE isso importa para o anunciante.
+2. <h4>What Works and What Doesn't</h4>
+   List strengths and weaknesses based on neural data. For each point, explain WHICH brain region indicates this and WHY it matters to the advertiser.
 
-3. <h4>Roteiro de Otimização</h4>
-   Dê 3-5 recomendações práticas e ordenadas por prioridade. Para cada uma:
-   - O que mudar no criativo
-   - Qual métrica da Meta isso deve impactar (3s view, retenção, CTR, conversão)
-   - Qual sinal neural justifica essa mudança
+3. <h4>Optimization Roadmap</h4>
+   Give 3-5 practical recommendations ordered by priority. For each one:
+   - What to change in the creative
+   - Which Meta metric this should impact (3s view, retention, CTR, conversion)
+   - Which neural signal justifies this change
 
-4. <h4>Previsão de Performance</h4>
-   Monte uma tabela HTML com previsões para: Taxa de 3s view, Retenção, CTR, CPA relativo.
-   Use cores: verde (#22c55e) para bom, amarelo (#f59e0b) para moderado, vermelho (#ef4444) para fraco.
+4. <h4>Performance Projection</h4>
+   Assemble an HTML table with projections for: 3s view rate, Retention, CTR, relative CPA.
+   Use colors: green (#22c55e) for good, orange (#f59e0b) for moderate, red (#ef4444) for weak.
 
-Use tags <p>, <ul>, <li>, <strong>, <table> para formatação.
-Escreva em português brasileiro, tom direto e técnico mas acessível.
-Não use emojis. Não repita os scores — o usuário já os vê no dashboard."""
+Use <p>, <ul>, <li>, <strong>, <table> tags for formatting.
+Write in English, direct and technical but accessible tone.
+Do not use emojis. Do not repeat the scores — the user already sees them on the dashboard."""
 
     try:
         message = client.messages.create(
@@ -616,12 +617,12 @@ Não use emojis. Não repita os scores — o usuário já os vê no dashboard.""
         )
         return message.content[0].text
     except Exception as e:
-        print(f"Erro na Claude API: {e}")
+        print(f"Error in Claude API: {e}")
         return None
 
 
 def generate_brain_images(preds: np.ndarray, video_name: str):
-    """Gera mapas cerebrais estáticos como base64 PNG."""
+    """Generates static brain maps as base64 PNG."""
     from nilearn import datasets as ds, plotting
 
     n_hemi = preds.shape[1] // 2
@@ -632,8 +633,8 @@ def generate_brain_images(preds: np.ndarray, video_name: str):
 
     brain_images = {}
     for img_name, data, title in [
-        ("avg", avg_activation, f"Ativação Cerebral Média — {video_name}"),
-        ("peak", peak_activation, f"Pico de Ativação (Segmento {peak_idx}) — {video_name}"),
+        ("avg", avg_activation, f"Average Brain Activation — {video_name}"),
+        ("peak", peak_activation, f"Peak Activation (Segment {peak_idx}) — {video_name}"),
     ]:
         fig, axes = plt.subplots(2, 2, figsize=(14, 10), subplot_kw={"projection": "3d"})
         for i, (hemi, hdata, mesh, bg) in enumerate([
@@ -660,14 +661,14 @@ def generate_brain_images(preds: np.ndarray, video_name: str):
     ts_data = preds.mean(axis=1)
     ax_t.plot(range(len(ts_data)), ts_data, "o-", color="#4f7cff", linewidth=2, markersize=5)
     ax_t.fill_between(range(len(ts_data)), ts_data, alpha=0.15, color="#4f7cff")
-    ax_t.set_xlabel("Segmento (tempo)", fontsize=11, color="#8892a8")
-    ax_t.set_ylabel("Ativação cerebral média", fontsize=11, color="#8892a8")
+    ax_t.set_xlabel("Segment (time)", fontsize=11, color="#8892a8")
+    ax_t.set_ylabel("Average brain activation", fontsize=11, color="#8892a8")
     ax_t.tick_params(colors="#8892a8")
     for spine in ax_t.spines.values():
         spine.set_color("#252d45")
     ax_t.grid(True, alpha=0.15, color="#8892a8")
     peak_s = ts_data.argmax()
-    ax_t.annotate(f"Pico (seg. {peak_s})", xy=(peak_s, ts_data[peak_s]),
+    ax_t.annotate(f"Peak (seg. {peak_s})", xy=(peak_s, ts_data[peak_s]),
                   xytext=(peak_s - 5, ts_data[peak_s] + 0.01),
                   arrowprops=dict(arrowstyle="->", color="#FF6B35"), fontsize=10, color="#FF6B35")
     plt.tight_layout()
@@ -680,10 +681,10 @@ def generate_brain_images(preds: np.ndarray, video_name: str):
     return brain_images
 
 
-# ── Geração de dados 3D ─────────────────────────────────────────────────────
+# ── 3D Data Generation ─────────────────────────────────────────────────────
 
 def generate_3d_data(preds: np.ndarray, assets_dir: Path):
-    """Gera dados de cores por face para o viewer 3D."""
+    """Generates face color data for the 3D viewer."""
     import trimesh
 
     n_segments = preds.shape[0]
@@ -759,12 +760,12 @@ def generate_3d_data(preds: np.ndarray, assets_dir: Path):
     return viewer3d_data, glb_b64
 
 
-# ── Pipeline completo ────────────────────────────────────────────────────────
+# ── Full Pipeline ────────────────────────────────────────────────────────
 
 def full_analysis(video_path: str, preds: np.ndarray, assets_dir: Path = None):
-    """Pipeline completo: scoring + brain images + 3D data.
+    """Full pipeline: scoring + brain images + 3D data.
 
-    Retorna dict com todos os dados necessários para o dashboard.
+    Returns dict with all data needed for the dashboard.
     """
     video_path = str(video_path)
     video_name = Path(video_path).stem
@@ -774,7 +775,7 @@ def full_analysis(video_path: str, preds: np.ndarray, assets_dir: Path = None):
     # Scoring
     result = compute_scores(preds, video_duration)
 
-    # AI Analysis (Claude API) — substitui a análise baseada em regras
+    # AI Analysis (Claude API) — replaces rule-based analysis
     ai_analysis = generate_ai_analysis(
         scores=result["scores"],
         diagnostics=result["diagnostics"],
@@ -797,6 +798,16 @@ def full_analysis(video_path: str, preds: np.ndarray, assets_dir: Path = None):
 
     result.update({
         "videoName": video_name,
+        "videoFile": Path(video_path).name,
+        "videoDuration": video_duration,
+        "numSegments": n_segments,
+        "brainImages": brain_images,
+        "viewer3d": viewer3d_data,
+        "glb": glb_b64,
+        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+    })
+
+    return result
         "videoFile": Path(video_path).name,
         "segments": n_segments,
         "videoDuration": video_duration,

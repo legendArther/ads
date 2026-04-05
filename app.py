@@ -1,9 +1,3 @@
-"""Neuro Ads — Análise Cerebral de Criativos.
-
-App Gradio para HuggingFace Spaces (Docker + GPU).
-Faz upload de vídeo → roda TRIBE v2 → retorna análise neural completa.
-"""
-
 import os
 import tempfile
 from pathlib import Path
@@ -42,15 +36,15 @@ def get_model():
 
 def analyze_video(video_path: str, progress=gr.Progress()):
     if not video_path:
-        raise gr.Error("Faça upload de um vídeo primeiro.")
+        raise gr.Error("Please upload a video first.")
 
-    progress(0.05, desc="Carregando modelo TRIBE v2...")
+    progress(0.05, desc="Loading TRIBE v2 model...")
     model = get_model()
 
-    progress(0.15, desc="Extraindo features de áudio e vídeo...")
+    progress(0.15, desc="Extracting audio and video features...")
     preds = run_inference(video_path, model, use_text=USE_TEXT)
 
-    progress(0.6, desc="Computando scores neurais...")
+    progress(0.6, desc="Computing neural scores...")
     data = full_analysis(
         video_path=video_path,
         preds=preds,
@@ -67,7 +61,7 @@ def analyze_video(video_path: str, progress=gr.Progress()):
         for d in data["diagnostics"]
     )
 
-    progress(1.0, desc="Análise completa!")
+    progress(1.0, desc="Analysis complete!")
 
     # Return ONLY lightweight data (no dashboard HTML file — it's 8MB and kills the Gradio Client)
     return (
@@ -94,23 +88,23 @@ def _get_grade(score):
 with gr.Blocks(title="Neuro Ads") as app:
     gr.Markdown(
         """
-        # 🧠 Neuro Ads — Análise Cerebral de Criativos
+        # 🧠 Neuro Ads — Creative Brain Analysis
 
-        Faça upload de um vídeo de anúncio (até 30s) e receba uma análise neural completa
-        baseada em predição de atividade cerebral (TRIBE v2 / Meta Research).
+        Upload an ad video (up to 30s) and receive a complete neural analysis
+        based on brain activity prediction (TRIBE v2 / Meta Research).
         """
     )
 
-    video_input = gr.File(label="Upload do Vídeo", file_types=["video"])
-    analyze_btn = gr.Button("🔬 Analisar Criativo", variant="primary", size="lg")
+    video_input = gr.File(label="Upload Video", file_types=["video"])
+    analyze_btn = gr.Button("🔬 Analyze Creative", variant="primary", size="lg")
 
     with gr.Row():
         hook_score = gr.Number(label="🎯 Hook (35%)", precision=1, interactive=False)
-        semantic_score = gr.Number(label="💬 Semântica (20%)", precision=1, interactive=False)
-        synergy_score = gr.Number(label="🔗 Sinergia (25%)", precision=1, interactive=False)
-        coherence_score = gr.Number(label="📊 Coerência (20%)", precision=1, interactive=False)
+        semantic_score = gr.Number(label="💬 Semantic (20%)", precision=1, interactive=False)
+        synergy_score = gr.Number(label="🔗 Synergy (25%)", precision=1, interactive=False)
+        coherence_score = gr.Number(label="📊 Coherence (20%)", precision=1, interactive=False)
 
-    diagnostics_display = gr.Markdown(label="Diagnóstico")
+    diagnostics_display = gr.Markdown(label="Diagnostics")
 
     gr.Markdown("*Powered by TRIBE v2 (Meta Research)*")
 
