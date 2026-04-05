@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexBot | Neuro-Ad Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #ff0000;
+            --bg: #000000;
+            --text: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            min-height: 100%;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .background-embed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .background-embed::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(to top, #000000 0%, transparent 100%);
+            z-index: 2;
+        }
+
+        .background-embed iframe {
+            width: 100%;
+            height: calc(100% + 70px); /* Pushes the bottom edge (watermark) out of view */
+            border: none;
+        }
+
+        .overlay {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 60px;
+            background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.0) 100%);
+            pointer-events: none;
+        }
+
+        .compare-section {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 100px 60px;
+            background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 20%, rgba(0,0,0,1) 100%);
+            pointer-events: auto;
+        }
+
+        .compare-section h2 {
+            font-size: 5.5rem;
+            font-weight: 300;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            letter-spacing: -3px;
+            text-align: center;
+            max-width: 1200px;
+        }
+
+        .compare-section .subheading {
+            font-size: 1rem;
+            font-weight: 300;
+            opacity: 0.6;
+            margin-bottom: 4rem;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .compare-container {
+            display: flex;
+            gap: 40px;
+            width: 100%;
+            max-width: 1000px;
+            margin-bottom: 40px;
+        }
+
+        .creative-card {
+            flex: 1;
+            border: 1px dashed rgba(255,255,255,0.3);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            background: rgba(255,255,255,0.02);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .creative-card:hover {
+            border-color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .creative-card-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .creative-card-subtitle {
+            font-size: 0.8rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+        }
+
+        header, main, footer {
+            pointer-events: none;
+        }
+
+        .logo, nav a, .cta-button, footer > div {
+            pointer-events: auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -1px;
+        }
+
+        nav a {
+            color: var(--text);
+            text-decoration: none;
+            margin-left: 30px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        nav a:hover {
+            opacity: 1;
+        }
+
+        main {
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 6rem;
+            font-weight: 700;
+            line-height: 0.85;
+            margin-bottom: 24px;
+            letter-spacing: -4px;
+        }
+
+        p.tagline {
+            font-size: 1.1rem;
+            font-weight: 300;
+            opacity: 0.8;
+            max-width: 500px;
+            margin: 0 auto 48px;
+            line-height: 1.6;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 20px 50px;
+            background-color: var(--text);
+            color: var(--bg);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            background-color: var(--accent);
+            color: var(--text);
+        }
+
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 0.7rem;
+            opacity: 0.4;
+            letter-spacing: 1px;
+            pointer-events: auto;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #00ff00;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 3.5rem; letter-spacing: -2px; }
+            .overlay, .compare-section { padding: 40px 20px; }
+            .compare-section h2 { font-size: 2.5rem; }
+            .compare-container { flex-direction: column; gap: 20px; }
+            nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-embed">
+        <!-- Replaced inline width/height with CSS styling above -->
+        <iframe id="spline-bg" src='https://my.spline.design/nexbotrobotcharacterconcept-zDlySmeBiJTL4jc0sQHOZqy2/'></iframe>
+    </div>
+
+    <div class="overlay">
+        <header>
+            <div class="logo">Attentionmaxxing Clanker</div>
+            <nav>
+                <a href="#">some</a>
+                <a href="#compare">links</a>
+                <a href="">here</a>
+            </nav>
+        </header>
+
+    
+    </div>
+
+    <section id="compare" class="compare-section">
+        <h2>An AI Model of<br>the Human Brain</h2>
+        <div class="subheading">Predictive A/B testing powered by TRIBE v2 Neural Engine</div>
+        <div class="compare-container">
+            <div class="creative-card">
+                <div class="creative-card-title">CREATIVE ALPHA</div>
+                <div class="creative-card-subtitle">+ Upload Image/Video</div>
+            </div>
+            <div class="creative-card">
+                <div class="creative-card-title">CREATIVE BETA</div>
+                <div class="creative-card-subtitle">+ Upload Image/Video</div>
+            </div>
+        </div>
+        <a href="#" class="cta-button">RUN</a>
+    </section>
+</body>
+</html>
