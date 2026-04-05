@@ -807,16 +807,7 @@ def full_analysis(video_path: str, preds: np.ndarray, assets_dir: Path = None):
         "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
     })
 
-    return result
-        "videoFile": Path(video_path).name,
-        "segments": n_segments,
-        "videoDuration": video_duration,
-        "brainImages": brain_images,
-        "viewer3d": viewer3d_data,
-        "glb": glb_b64 or {},
-        "nota": f"Vídeo de {video_duration:.0f}s analisado com {n_segments} segmentos temporais e {n_vertices:,} vértices cerebrais (malha fsaverage5).",
-    })
-
+  
     return result
 
 
